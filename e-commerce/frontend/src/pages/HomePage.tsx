@@ -97,7 +97,7 @@ const HomePage: React.FC = () => {
   return (
     <div className="min-h-screen">
       {/* ── Hero Section ── */}
-      <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-dark-400">
+      <section className="relative w-full min-h-screen flex items-center justify-center overflow-hidden bg-dark-400">
         {/* Background */}
         <div className="absolute inset-0">
           <img
@@ -145,7 +145,7 @@ const HomePage: React.FC = () => {
         </div>
 
         {/* Scroll Indicator */}
-        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 animate-bounce">
+        <div className="absolute bottom-10 flex flex-col items-center gap-2 animate-bounce">
           <span className="text-gray-500 text-xs tracking-widest uppercase">Scroll</span>
           <div className="w-px h-10 bg-gradient-to-b from-primary-500 to-transparent" />
         </div>

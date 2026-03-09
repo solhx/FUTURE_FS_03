@@ -21,6 +21,70 @@
 
 ---
 
+## 🆕 Recent Updates
+
+### 🎉 What's New (December 2024)
+
+We've been working hard to improve your Urban Nile experience! Here are the latest features added to the platform:
+
+#### 1. 🖼️ Image Upload Feature for Admin Products
+
+**Description:** Admins can now easily upload product images directly from the admin panel.
+
+**Features:**
+- Drag and drop file upload support
+- Image preview before uploading
+- Support for multiple image formats (JPG, PNG, JPEG)
+- Automatic image storage in the backend `uploads` directory
+
+**Technical Details:**
+- Uses `multer` package for Node.js file uploads
+- Configured in `backend/src/utils/multer.ts`
+- Uploaded images served via `/uploads` endpoint
+- Vite proxy configured for development (`/uploads` → backend)
+
+```typescript
+// Backend multer configuration
+import multer from 'multer';
+import path from 'path';
+
+const storage = multer.diskStorage({
+  destination: './src/uploads',
+  filename: (req, file, cb) => {
+    cb(null, `product-${Date.now()}${path.extname(file.originalname)}`);
+  }
+});
+```
+
+#### 2. 📂 Category Management
+
+**Description:** Full CRUD operations for product categories directly from the admin panel.
+
+**Features:**
+- Create new product categories
+- Delete existing categories
+- View all categories
+- Filter products by category
+
+**API Endpoints:**
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/products/categories` | Get all categories |
+| POST | `/api/products/categories` | Create category (Admin) |
+| DELETE | `/api/products/categories/:name` | Delete category (Admin) |
+
+#### 3. 👁️ File Preview in Admin Panel
+
+**Description:** Visual preview of product images before uploading or saving.
+
+**Features:**
+- Real-time image preview when selecting files
+- Thumbnail display for existing products
+- Better UX for product management
+
+---
+
 ## 🚀 Tech Stack
 
 | Layer | Technology |

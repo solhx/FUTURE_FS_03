@@ -29,6 +29,17 @@ export const productService = {
     return response.data;
   },
 
+  uploadImage: async (file: File): Promise<{ success: boolean; imageUrl: string; message: string }> => {
+    const formData = new FormData();
+    formData.append("image", file);
+    const response = await api.post("/products/upload", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    return response.data;
+  },
+
   createProduct: async (data: ProductFormData): Promise<{ success: boolean; product: Product }> => {
     const response = await api.post("/products", data);
     return response.data;
@@ -44,6 +55,16 @@ export const productService = {
 
   deleteProduct: async (id: string): Promise<{ success: boolean; message: string }> => {
     const response = await api.delete(`/products/${id}`);
+    return response.data;
+  },
+
+  createCategory: async (category: string): Promise<{ success: boolean; categories: string[]; message: string }> => {
+    const response = await api.post("/products/categories", { category });
+    return response.data;
+  },
+
+  deleteCategory: async (category: string): Promise<{ success: boolean; categories: string[]; message: string }> => {
+    const response = await api.delete(`/products/categories/${encodeURIComponent(category)}`);
     return response.data;
   },
 };

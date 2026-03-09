@@ -62,14 +62,17 @@ const ProductsPage: React.FC = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [fetchProducts]);
 
-  const updateParam = (key: string, value: string) => {
+  const updateParam = (key: string, value: string, resetPage = true) => {
     const params = new URLSearchParams(searchParams);
     if (value && value !== "All") {
       params.set(key, value);
     } else {
       params.delete(key);
     }
-    params.delete("page");
+    // Reset to page 1 when changing filters (search, category, sort, price), but not when changing pages
+    if (resetPage) {
+      params.delete("page");
+    }
     setSearchParams(params);
   };
 
@@ -305,7 +308,7 @@ const ProductsPage: React.FC = () => {
             {totalPages > 1 && (
               <div className="flex items-center justify-center gap-2 mt-12">
                 <button
-                  onClick={() => updateParam("page", String(currentPage - 1))}
+                  onClick={() => updateParam("page", String(currentPage - 1), false)}
                   disabled={currentPage === 1}
                   className="w-10 h-10 border border-gray-200 flex items-center justify-center text-dark-400 hover:bg-dark-400 hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                 >
@@ -314,7 +317,7 @@ const ProductsPage: React.FC = () => {
                 {[...Array(totalPages)].map((_, i) => (
                   <button
                     key={i}
-                    onClick={() => updateParam("page", String(i + 1))}
+                    onClick={() => updateParam("page", String(i + 1), false)}
                     className={`w-10 h-10 border text-sm font-semibold transition-colors ${
                       currentPage === i + 1
                         ? "bg-dark-400 text-white border-dark-400"
@@ -325,7 +328,7 @@ const ProductsPage: React.FC = () => {
                   </button>
                 ))}
                 <button
-                  onClick={() => updateParam("page", String(currentPage + 1))}
+                  onClick={() => updateParam("page", String(currentPage + 1), false)}
                   disabled={currentPage === totalPages}
                   className="w-10 h-10 border border-gray-200 flex items-center justify-center text-dark-400 hover:bg-dark-400 hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                 >

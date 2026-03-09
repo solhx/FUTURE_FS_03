@@ -1,6 +1,26 @@
 import { Request, Response } from "express";
 import asyncHandler from "express-async-handler";
 import Product from "../models/Product";
+import path from "path";
+
+// @desc    Upload product image
+// @route   POST /api/products/upload
+// @access  Private/Admin
+export const uploadProductImage = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.file) {
+    res.status(400).json({ success: false, message: "Please upload an image file" });
+    return;
+  }
+
+  // Return the file path that can be used as image URL
+  const imageUrl = `/uploads/${req.file.filename}`;
+  
+  res.status(200).json({
+    success: true,
+    imageUrl,
+    message: "Image uploaded successfully",
+  });
+});
 
 // @desc    Get all products with search & filter
 // @route   GET /api/products
@@ -145,4 +165,70 @@ export const deleteProduct = asyncHandler(async (req: Request, res: Response) =>
 export const getCategories = asyncHandler(async (req: Request, res: Response) => {
   const categories = await Product.distinct("category");
   res.status(200).json({ success: true, categories });
+});
+
+// @desc    Create new category
+// @route   POST /api/products/categories
+// @access  Private/Admin
+export const createCategory = asyncHandler(async (req: Request, res: Response) => {
+  const { category } = req.body;
+
+  if (!category || !category.trim()) {
+    res.status(400).json({ success: false, message: "Category name is required" });
+    return;
+  }
+
+  const normalizedCategory = category.trim();
+  
+  // Check if category already exists
+  const existingCategories = await Product.distinct("category");
+  if (existingCategories.includes(normalizedCategory)) {
+    res.status(400).json({ success: false, message: "Category already exists" });
+    return;
+  }
+
+  // Create a dummy product with the new category to save it
+  const product = await Product.create({
+    name: "Temp Product - Do Not Delete",
+    price: 0,
+    description: "This is a temporary product to create a new category",
+    image: "https://placeholder.com",
+    images: [],
+    sizes: ["M"],
+    stock: 0,
+    category: normalizedCategory,
+    featured: false,
+  });
+
+  // Delete the temp product immediately
+  await product.deleteOne();
+
+  const allCategories = await Product.distinct("category");
+  res.status(201).json({ success: true, categories: allCategories, message: "Category created successfully" });
+});
+
+// @desc    Delete category
+// @route   DELETE /api/products/categories/:category
+// @access  Private/Admin
+export const deleteCategory = asyncHandler(async (req: Request, res: Response) => {
+  const { category } = req.params;
+
+  if (!category) {
+    res.status(400).json({ success: false, message: "Category is required" });
+    return;
+  }
+
+  // Check if there are products in this category
+  const productCount = await Product.countDocuments({ category });
+
+  if (productCount > 0) {
+    res.status(400).json({ 
+      success: false, 
+      message: `Cannot delete category. There are ${productCount} product(s) in this category. Please delete or move the products first.` 
+    });
+    return;
+  }
+
+  const allCategories = await Product.distinct("category");
+  res.status(200).json({ success: true, categories: allCategories, message: "Category deleted successfully" });
 });

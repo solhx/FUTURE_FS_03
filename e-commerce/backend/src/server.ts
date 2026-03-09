@@ -4,6 +4,7 @@ import helmet from "helmet";
 import morgan from "morgan";
 import rateLimit from "express-rate-limit";
 import dotenv from "dotenv";
+import path from "path";
 import connectDB from "./config/db";
 import authRoutes from "./routes/authRoutes";
 import productRoutes from "./routes/productRoutes";
@@ -49,6 +50,9 @@ app.use(
 // Body parsing
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+
+// Serve uploaded files statically
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Logging
 if (process.env.NODE_ENV === "development") {

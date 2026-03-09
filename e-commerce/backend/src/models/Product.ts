@@ -44,7 +44,6 @@ const ProductSchema = new Schema<IProduct>(
     },
     sizes: {
       type: [String],
-      enum: ["XS", "S", "M", "L", "XL", "XXL"],
       default: ["S", "M", "L", "XL"],
     },
     stock: {
@@ -56,14 +55,6 @@ const ProductSchema = new Schema<IProduct>(
     category: {
       type: String,
       required: [true, "Category is required"],
-      enum: [
-        "T-Shirts",
-        "Hoodies",
-        "Joggers",
-        "Jackets",
-        "Accessories",
-        "Sets",
-      ],
       default: "T-Shirts",
     },
     featured: {

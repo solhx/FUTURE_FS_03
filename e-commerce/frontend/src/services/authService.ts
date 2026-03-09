@@ -1,5 +1,17 @@
 import api from "./api";
-import { AuthResponse, User } from "../types";
+import { User } from "../types";
+
+// ── Updated AuthResponse to include devOtp ──
+export interface AuthResponse {
+  success: boolean;
+  message: string;
+  token?: string;
+  user?: User;
+  email?: string;
+  requiresVerification?: boolean;
+  devOtp?: string;
+  emailSent?: boolean;
+}
 
 export const authService = {
   register: async (data: {
@@ -8,6 +20,15 @@ export const authService = {
     password: string;
   }): Promise<AuthResponse> => {
     const response = await api.post("/auth/register", data);
+    return response.data;
+  },
+
+  registerCustomer: async (data: {
+    name: string;
+    email: string;
+    password: string;
+  }): Promise<AuthResponse> => {
+    const response = await api.post("/auth/register-customer", data);
     return response.data;
   },
 
@@ -27,12 +48,16 @@ export const authService = {
     return response.data;
   },
 
-  resendOTP: async (email: string): Promise<{ success: boolean; message: string }> => {
+  resendOTP: async (
+    email: string
+  ): Promise<{ success: boolean; message: string; devOtp?: string }> => {
     const response = await api.post("/auth/resend-otp", { email });
     return response.data;
   },
 
-  forgotPassword: async (email: string): Promise<{ success: boolean; message: string }> => {
+  forgotPassword: async (
+    email: string
+  ): Promise<{ success: boolean; message: string; devOtp?: string }> => {
     const response = await api.post("/auth/forgot-password", { email });
     return response.data;
   },
@@ -57,16 +82,20 @@ export const authService = {
   },
 
   getStoredUser: (): User | null => {
-    const user = localStorage.getItem("urban_nile_user");
-    return user ? JSON.parse(user) : null;
+    try {
+      const user = localStorage.getItem("urban_nile_user");
+      return user ? JSON.parse(user) : null;
+    } catch {
+      return null;
+    }
   },
 
-  getToken: (): string | null => {
-    return localStorage.getItem("urban_nile_token");
-  },
+  getToken: (): string | null => localStorage.getItem("urban_nile_token"),
 
   storeAuth: (token: string, user: User): void => {
     localStorage.setItem("urban_nile_token", token);
     localStorage.setItem("urban_nile_user", JSON.stringify(user));
   },
+
+  isLoggedIn: (): boolean => !!localStorage.getItem("urban_nile_token"),
 };

@@ -10,13 +10,14 @@ import {
   ChevronRight,
   Search,
   AlertTriangle,
+  FolderPlus,
+  Folder,
 } from "lucide-react";
 import { productService } from "../../services/productService";
 import { Product, ProductFormData } from "../../types";
 import LoadingSpinner from "../../components/LoadingSpinner";
 import toast from "react-hot-toast";
 
-const CATEGORIES = ["T-Shirts", "Hoodies", "Joggers", "Jackets", "Sets", "Accessories"];
 const ALL_SIZES = ["XS", "S", "M", "L", "XL", "XXL"];
 
 const emptyForm: ProductFormData = {
@@ -33,15 +34,25 @@ const emptyForm: ProductFormData = {
 
 const AdminProducts: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<string[]>(["T-Shirts", "Hoodies", "Joggers", "Jackets", "Sets", "Accessories"]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
   const [form, setForm] = useState<ProductFormData>(emptyForm);
   const [formErrors, setFormErrors] = useState<Partial<ProductFormData>>({});
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [categoryLoading, setCategoryLoading] = useState(false);
+  const [additionalImageUrls, setAdditionalImageUrls] = useState<string[]>([]);
+  const [additionalImagePreviews, setAdditionalImagePreviews] = useState<string[]>([]);
+  const [customSizeInput, setCustomSizeInput] = useState("");
+
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
@@ -58,15 +69,80 @@ const AdminProducts: React.FC = () => {
     }
   }, [search]);
 
+  const fetchCategories = useCallback(async () => {
+    try {
+      const data = await productService.getCategories();
+      if (data.success && data.categories.length > 0) {
+        setCategories(data.categories);
+      }
+    } catch {
+      // Keep default categories on error
+    }
+  }, []);
+
   useEffect(() => {
     const t = setTimeout(fetchProducts, 300);
     return () => clearTimeout(t);
   }, [fetchProducts]);
 
+  useEffect(() => {
+    fetchCategories();
+  }, [fetchCategories]);
+
+  const handleCreateCategory = async () => {
+    if (!newCategoryName.trim()) {
+      toast.error("Category name is required");
+      return;
+    }
+    setCategoryLoading(true);
+    try {
+      const result = await productService.createCategory(newCategoryName.trim());
+      if (result.success) {
+        setCategories(result.categories);
+        toast.success(result.message);
+        setNewCategoryName("");
+        setShowCategoryModal(false);
+      } else {
+        toast.error(result.message);
+      }
+    } catch {
+      toast.error("Failed to create category");
+    } finally {
+      setCategoryLoading(false);
+    }
+  };
+
+  const handleDeleteCategory = async (category: string) => {
+    if (!confirm(`Are you sure you want to delete the category "${category}"?`)) {
+      return;
+    }
+    setCategoryLoading(true);
+    try {
+      const result = await productService.deleteCategory(category);
+      if (result.success) {
+        setCategories(result.categories);
+        // Update form category if the deleted one was selected
+        if (form.category === category) {
+          setForm((p) => ({ ...p, category: result.categories[0] || "" }));
+        }
+        toast.success(result.message);
+      } else {
+        toast.error(result.message);
+      }
+    } catch {
+      toast.error("Failed to delete category");
+    } finally {
+      setCategoryLoading(false);
+    }
+  };
+
   const openCreateModal = () => {
     setEditingProduct(null);
     setForm(emptyForm);
     setFormErrors({});
+    setPreviewUrl(null);
+    setAdditionalImageUrls([]);
+    setAdditionalImagePreviews([]);
     setShowModal(true);
   };
 
@@ -83,7 +159,11 @@ const AdminProducts: React.FC = () => {
       category: product.category,
       featured: product.featured,
     });
+    // Load existing additional images
+    setAdditionalImageUrls(product.images || []);
+    setAdditionalImagePreviews(product.images || []);
     setFormErrors({});
+    setPreviewUrl(null);
     setShowModal(true);
   };
 
@@ -106,12 +186,19 @@ const AdminProducts: React.FC = () => {
   const handleSave = async () => {
     if (!validateForm()) return;
     setSaving(true);
+    
+    // Include additional images in form data
+    const formData = {
+      ...form,
+      images: additionalImageUrls,
+    };
+    
     try {
       if (editingProduct) {
-        await productService.updateProduct(editingProduct._id, form);
+        await productService.updateProduct(editingProduct._id, formData);
         toast.success("Product updated successfully!");
       } else {
-        await productService.createProduct(form);
+        await productService.createProduct(formData);
         toast.success("Product created successfully!");
       }
       setShowModal(false);
@@ -145,6 +232,121 @@ const AdminProducts: React.FC = () => {
       sizes: prev.sizes.includes(size)
         ? prev.sizes.filter((s) => s !== size)
         : [...prev.sizes, size],
+    }));
+  };
+
+  const handleAddCustomSize = () => {
+    const size = customSizeInput.trim();
+    if (!size) {
+      toast.error("Please enter a size number");
+      return;
+    }
+    
+    // Check if size already exists
+    if (form.sizes.includes(size)) {
+      toast.error("This size already exists");
+      setCustomSizeInput("");
+      return;
+    }
+    
+    setForm((prev) => ({
+      ...prev,
+      sizes: [...prev.sizes, size],
+    }));
+    setCustomSizeInput("");
+    toast.success(`Size ${size} added!`);
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file");
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image size must be less than 5MB");
+      return;
+    }
+
+    // Create preview URL
+    const preview = URL.createObjectURL(file);
+    setPreviewUrl(preview);
+
+    setUploading(true);
+    try {
+      const result = await productService.uploadImage(file);
+      if (result.success) {
+        setForm((prev) => ({ ...prev, image: result.imageUrl }));
+        toast.success("Image uploaded successfully!");
+      } else {
+        toast.error(result.message || "Failed to upload image");
+        setPreviewUrl(null);
+      }
+    } catch {
+      toast.error("Failed to upload image. Please try again.");
+      setPreviewUrl(null);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleAdditionalImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image size must be less than 5MB");
+      return;
+    }
+
+    // Create preview URL
+    const preview = URL.createObjectURL(file);
+    
+    setUploading(true);
+    try {
+      const result = await productService.uploadImage(file);
+      if (result.success) {
+        setAdditionalImageUrls((prev) => [...prev, result.imageUrl]);
+        setAdditionalImagePreviews((prev) => [...prev, preview]);
+        toast.success("Additional image uploaded successfully!");
+      } else {
+        toast.error(result.message || "Failed to upload image");
+        URL.revokeObjectURL(preview);
+      }
+    } catch {
+      toast.error("Failed to upload image. Please try again.");
+      URL.revokeObjectURL(preview);
+    } finally {
+      setUploading(false);
+      // Reset the input
+      e.target.value = "";
+    }
+  };
+
+  const handleRemoveAdditionalImage = (index: number) => {
+    const urlToRemove = additionalImageUrls[index];
+    const previewToRevoke = additionalImagePreviews[index];
+    
+    setAdditionalImageUrls((prev) => prev.filter((_, i) => i !== index));
+    setAdditionalImagePreviews((prev) => prev.filter((_, i) => i !== index));
+    
+    // Revoke the preview URL to avoid memory leaks
+    URL.revokeObjectURL(previewToRevoke);
+    
+    // Update form.images
+    setForm((prev) => ({
+      ...prev,
+      images: prev.images.filter((img) => img !== urlToRemove),
     }));
   };
 
@@ -397,15 +599,25 @@ const AdminProducts: React.FC = () => {
 
               {/* Category */}
               <div>
-                <label className="block text-xs font-bold text-dark-400 tracking-widest uppercase mb-2">
-                  Category
-                </label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-xs font-bold text-dark-400 tracking-widest uppercase">
+                    Category
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowCategoryModal(true)}
+                    className="text-xs text-primary-500 hover:text-primary-600 font-bold flex items-center gap-1"
+                  >
+                    <FolderPlus size={14} />
+                    Manage Categories
+                  </button>
+                </div>
                 <select
                   value={form.category}
                   onChange={(e) => setForm((p) => ({ ...p, category: e.target.value }))}
                   className="w-full border-2 border-gray-200 px-4 py-3 text-sm focus:outline-none focus:border-dark-400 transition-colors bg-white cursor-pointer"
                 >
-                  {CATEGORIES.map((c) => (
+                  {categories.map((c) => (
                     <option key={c} value={c}>{c}</option>
                   ))}
                 </select>
@@ -435,30 +647,116 @@ const AdminProducts: React.FC = () => {
               {/* Image URL */}
               <div>
                 <label className="block text-xs font-bold text-dark-400 tracking-widest uppercase mb-2">
-                  Main Image URL <span className="text-red-400">*</span>
+                  Product Image <span className="text-red-400">*</span>
                 </label>
-                <input
-                  type="text"
-                  value={form.image}
-                  onChange={(e) => setForm((p) => ({ ...p, image: e.target.value }))}
-                  placeholder="https://images.unsplash.com/..."
-                  className={`w-full border-2 px-4 py-3 text-sm focus:outline-none transition-colors ${
-                    formErrors.image ? "border-red-400" : "border-gray-200 focus:border-dark-400"
-                  }`}
-                />
-                {formErrors.image && (
-                  <p className="text-red-500 text-xs mt-1">{String(formErrors.image)}</p>
-                )}
-                {form.image && (
-                  <img
-                    src={form.image}
-                    alt="Preview"
-                    className="mt-2 h-24 w-24 object-cover border border-gray-200"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = "none";
-                    }}
-                  />
-                )}
+                <div className="space-y-3">
+                  {/* URL Input */}
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={form.image}
+                      onChange={(e) => setForm((p) => ({ ...p, image: e.target.value }))}
+                      placeholder="https://images.unsplash.com/... or upload a file"
+                      className={`flex-1 border-2 px-4 py-3 text-sm focus:outline-none transition-colors ${
+                        formErrors.image ? "border-red-400" : "border-gray-200 focus:border-dark-400"
+                      }`}
+                    />
+                    <label
+                      className={`cursor-pointer bg-dark-400 text-white px-4 py-3 text-sm font-bold tracking-wider uppercase hover:bg-primary-500 transition-colors flex items-center gap-2 ${
+                        uploading ? "opacity-60 cursor-not-allowed" : ""
+                      }`}
+                    >
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        className="hidden"
+                        id="product-image-upload"
+                        disabled={uploading}
+                      />
+                      {uploading ? "Uploading..." : "Upload"}
+                    </label>
+                  </div>
+                  {formErrors.image && (
+                    <p className="text-red-500 text-xs">{String(formErrors.image)}</p>
+                  )}
+                  {/* Image Preview */}
+                  {(form.image || previewUrl) && (
+                    <div className="relative inline-block">
+                      <img
+                        src={previewUrl || form.image}
+                        alt="Preview"
+                        className="mt-2 h-24 w-24 object-cover border border-gray-200"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = "none";
+                        }}
+                      />
+                      {previewUrl && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPreviewUrl(null);
+                            setForm((p) => ({ ...p, image: "" }));
+                          }}
+                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                        >
+                          <X size={12} />
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Additional Images */}
+              <div>
+                <label className="block text-xs font-bold text-dark-400 tracking-widest uppercase mb-2">
+                  Additional Images
+                </label>
+                <div className="space-y-3">
+                  {/* Add More Images Button */}
+                  <label
+                    className={`cursor-pointer border-2 border-dashed border-gray-300 px-4 py-3 text-sm font-bold tracking-wider uppercase hover:border-dark-400 hover:text-dark-400 transition-colors flex items-center gap-2 ${
+                      uploading ? "opacity-60 cursor-not-allowed" : ""
+                    }`}
+                  >
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleAdditionalImageUpload}
+                      className="hidden"
+                      id="additional-image-upload"
+                      disabled={uploading}
+                    />
+                    <Plus size={16} />
+                    {uploading ? "Uploading..." : "Add More Images"}
+                  </label>
+
+                  {/* Additional Images Preview Grid */}
+                  {(additionalImageUrls.length > 0 || additionalImagePreviews.length > 0) && (
+                    <div className="grid grid-cols-4 gap-3">
+                      {additionalImageUrls.map((url, index) => (
+                        <div key={index} className="relative group">
+                          <img
+                            src={additionalImagePreviews[index] || url}
+                            alt={`Additional ${index + 1}`}
+                            className="h-20 w-full object-cover border border-gray-200 rounded"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = "https://via.placeholder.com/150?text=No+Image";
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveAdditionalImage(index)}
+                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors opacity-0 group-hover:opacity-100"
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Sizes */}
@@ -466,7 +764,9 @@ const AdminProducts: React.FC = () => {
                 <label className="block text-xs font-bold text-dark-400 tracking-widest uppercase mb-2">
                   Available Sizes <span className="text-red-400">*</span>
                 </label>
-                <div className="flex gap-2 flex-wrap">
+                
+                {/* Standard Sizes */}
+                <div className="flex gap-2 flex-wrap mb-3">
                   {ALL_SIZES.map((size) => (
                     <button
                       key={size}
@@ -482,6 +782,43 @@ const AdminProducts: React.FC = () => {
                     </button>
                   ))}
                 </div>
+                
+                {/* Custom Size Input */}
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="number"
+                    value={customSizeInput}
+                    onChange={(e) => setCustomSizeInput(e.target.value)}
+                    placeholder="Enter size (e.g., 40)"
+                    className="flex-1 border-2 border-gray-200 px-4 py-2.5 text-sm focus:outline-none focus:border-dark-400 transition-colors"
+                    onKeyDown={(e) => e.key === "Enter" && handleAddCustomSize()}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddCustomSize}
+                    className="bg-primary-500 text-dark-400 px-4 py-2.5 text-sm font-bold tracking-wider uppercase hover:bg-primary-400 transition-colors flex items-center gap-2"
+                  >
+                    <Plus size={16} />
+                    Add
+                  </button>
+                </div>
+                
+                {/* Show custom sizes that were added */}
+                {form.sizes.filter(s => !ALL_SIZES.includes(s)).length > 0 && (
+                  <div className="flex gap-2 flex-wrap mt-3">
+                    {form.sizes.filter(s => !ALL_SIZES.includes(s)).map((size) => (
+                      <button
+                        key={size}
+                        type="button"
+                        onClick={() => toggleSize(size)}
+                        className="w-12 h-10 border-2 border-dark-400 bg-dark-400 text-white text-xs font-bold transition-all hover:bg-red-500 hover:border-red-500"
+                      >
+                        {size}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                
                 {formErrors.sizes && (
                   <p className="text-red-500 text-xs mt-1">{String(formErrors.sizes)}</p>
                 )}
@@ -575,12 +912,96 @@ const AdminProducts: React.FC = () => {
                 </button>
                 <button
                   onClick={handleDelete}
-                  disabled={saving}
-                  className="px-8 py-2.5 bg-red-500 text-white text-sm font-bold tracking-wider uppercase hover:bg-red-600 transition-colors flex items-center gap-2 disabled:opacity-60"
-                >
-                  {saving ? <LoadingSpinner size="sm" /> : <><Trash2 size={15} /> Delete</>}
-                </button>
+                disabled={saving}
+                className="px-8 py-2.5 bg-red-500 text-white text-sm font-bold tracking-wider uppercase hover:bg-red-600 transition-colors flex items-center gap-2 disabled:opacity-60"
+              >
+                {saving ? <LoadingSpinner size="sm" /> : <><Trash2 size={15} /> Delete</>}
+              </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Category Management Modal ── */}
+      {showCategoryModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-md shadow-2xl animate-slide-up">
+            <div className="bg-dark-400 px-6 py-4 flex items-center justify-between">
+              <h2 className="text-white font-bold tracking-wider text-sm uppercase flex items-center gap-2">
+                <Folder size={18} />
+                Manage Categories
+              </h2>
+              <button
+                onClick={() => setShowCategoryModal(false)}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-6">
+              {/* Add New Category */}
+              <div className="mb-6">
+                <label className="block text-xs font-bold text-dark-400 tracking-widest uppercase mb-2">
+                  Add New Category
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newCategoryName}
+                    onChange={(e) => setNewCategoryName(e.target.value)}
+                    placeholder="Enter category name"
+                    className="flex-1 border-2 border-gray-200 px-4 py-2.5 text-sm focus:outline-none focus:border-dark-400 transition-colors"
+                    onKeyDown={(e) => e.key === "Enter" && handleCreateCategory()}
+                  />
+                  <button
+                    onClick={handleCreateCategory}
+                    disabled={categoryLoading || !newCategoryName.trim()}
+                    className="bg-primary-500 text-dark-400 px-4 py-2.5 text-sm font-bold tracking-wider uppercase hover:bg-primary-400 transition-colors disabled:opacity-60 flex items-center gap-2"
+                  >
+                    {categoryLoading ? <LoadingSpinner size="sm" /> : <><Plus size={16} /> Add</>}
+                  </button>
+                </div>
+              </div>
+
+              {/* Category List */}
+              <div>
+                <label className="block text-xs font-bold text-dark-400 tracking-widest uppercase mb-2">
+                  Existing Categories ({categories.length})
+                </label>
+                <div className="border-2 border-gray-100 max-h-60 overflow-y-auto">
+                  {categories.length === 0 ? (
+                    <p className="p-4 text-center text-gray-500 text-sm">No categories found</p>
+                  ) : (
+                    categories.map((category) => (
+                      <div
+                        key={category}
+                        className="flex items-center justify-between px-4 py-3 border-b border-gray-50 last:border-b-0 hover:bg-gray-50"
+                      >
+                        <span className="font-medium text-dark-400 text-sm">{category}</span>
+                        <button
+                          onClick={() => handleDeleteCategory(category)}
+                          disabled={categoryLoading}
+                          className="p-1.5 text-red-400 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
+                          title="Delete category"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="px-6 py-4 border-t border-gray-100 flex justify-end bg-gray-50">
+              <button
+                onClick={() => setShowCategoryModal(false)}
+                className="px-6 py-2.5 border-2 border-gray-200 text-sm font-bold tracking-wider text-gray-600 hover:border-dark-400 hover:text-dark-400 transition-colors"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>

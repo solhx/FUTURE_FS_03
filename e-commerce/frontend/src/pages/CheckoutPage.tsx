@@ -1,4 +1,4 @@
-    import React, { useState } from "react";
+    import React, { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import {
   User,
@@ -18,6 +18,7 @@ import { orderService } from "../services/orderService";
 import { CheckoutFormData } from "../types";
 import LoadingSpinner from "../components/LoadingSpinner";
 import toast from "react-hot-toast";
+import { useAuth } from "../context/AuthContext";
 
 const EGYPTIAN_GOVERNORATES = [
   "Cairo", "Giza", "Alexandria", "Luxor", "Aswan", "Assiut",
@@ -39,10 +40,35 @@ const initialForm: CheckoutFormData = {
   notes: "",
 };
 
+// InputWrapper component moved outside to prevent remounting on every render
+const InputWrapper: React.FC<{
+  label: string;
+  icon: React.ReactNode;
+  error?: string;
+  required?: boolean;
+  children: React.ReactNode;
+}> = ({ label, icon, error, required, children }) => (
+  <div>
+    <label className="flex items-center gap-2 text-xs font-bold text-dark-400 tracking-widest uppercase mb-2">
+      {icon}
+      {label}
+      {required && <span className="text-red-400">*</span>}
+    </label>
+    {children}
+    {error && (
+      <p className="flex items-center gap-1 text-red-500 text-xs mt-1.5">
+        <AlertCircle size={11} />
+        {error}
+      </p>
+    )}
+  </div>
+);
+
 const CheckoutPage: React.FC = () => {
   const navigate = useNavigate();
   const { state, totalPrice, clearCart } = useCart();
   const { items } = state;
+  const { user } = useAuth();
 
   const [form, setForm] = useState<CheckoutFormData>(initialForm);
   const [errors, setErrors] = useState<Partial<CheckoutFormData>>({});
@@ -51,6 +77,15 @@ const CheckoutPage: React.FC = () => {
 
   const shippingPrice = totalPrice >= 800 ? 0 : 50;
   const grandTotal = totalPrice + shippingPrice;
+useEffect(() => {
+  if (user) {
+    setForm((prev) => ({
+      ...prev,
+      customerName: prev.customerName || user.name,
+      email:        prev.email        || user.email,
+    }));
+  }
+}, [user]);
 
   if (items.length === 0) {
     return (
@@ -135,29 +170,6 @@ const CheckoutPage: React.FC = () => {
       setLoading(false);
     }
   };
-
-  const InputWrapper: React.FC<{
-    label: string;
-    icon: React.ReactNode;
-    error?: string;
-    required?: boolean;
-    children: React.ReactNode;
-  }> = ({ label, icon, error, required, children }) => (
-    <div>
-      <label className="flex items-center gap-2 text-xs font-bold text-dark-400 tracking-widest uppercase mb-2">
-        {icon}
-        {label}
-        {required && <span className="text-red-400">*</span>}
-      </label>
-      {children}
-      {error && (
-        <p className="flex items-center gap-1 text-red-500 text-xs mt-1.5">
-          <AlertCircle size={11} />
-          {error}
-        </p>
-      )}
-    </div>
-  );
 
   const inputCls = (field: keyof CheckoutFormData) =>
     `w-full border-2 px-4 py-3 text-sm text-dark-400 focus:outline-none transition-colors ${
