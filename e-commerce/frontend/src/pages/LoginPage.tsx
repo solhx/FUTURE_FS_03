@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
-  Mail, Lock, Eye, EyeOff, User, AlertCircle, ArrowRight,
+  Mail, Lock, User, AlertCircle, ArrowRight,
 } from "lucide-react";
 import { authService } from "../services/authService";
 import { useAuth } from "../context/AuthContext";
@@ -18,7 +18,6 @@ const LoginPage: React.FC = () => {
 
   const [mode,         setMode]         = useState<Mode>("login");
   const [loading,      setLoading]      = useState(false);
-  const [showPass,     setShowPass]     = useState(false);
   const [pendingEmail, setPendingEmail] = useState("");
   const [error,        setError]        = useState("");
 
@@ -98,15 +97,7 @@ const LoginPage: React.FC = () => {
       setPendingEmail(form.email);
       setMode("verify");
 
-      // In dev, show OTP in toast so you can test without email
-      if (res.devOtp) {
-        toast.success(
-          `Dev Mode — Your OTP is: ${res.devOtp}`,
-          { duration: 30000, icon: "🔑" }
-        );
-      } else {
-        toast.success("Account created! Check your email for the OTP 📧");
-      }
+      toast.success("Account created! Check your email for the OTP 📧");
     } catch (err: unknown) {
       // Extract error message from response
       const axiosError = err as { response?: { data?: { message?: string } } };
@@ -251,13 +242,9 @@ const LoginPage: React.FC = () => {
                   </div>
                   <div className="relative">
                     <Lock size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input name="password" type={showPass ? "text" : "password"}
+                    <input name="password" type="password"
                       value={form.password} onChange={handleChange}
-                      placeholder="••••••••" className={`${inputCls} pr-12`} />
-                    <button type="button" onClick={() => setShowPass(!showPass)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-dark-400">
-                      {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
-                    </button>
+                      placeholder="••••••••" className={inputCls} />
                   </div>
                 </div>
 
@@ -312,13 +299,9 @@ const LoginPage: React.FC = () => {
                   </label>
                   <div className="relative">
                     <Lock size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input name="password" type={showPass ? "text" : "password"}
+                    <input name="password" type="password"
                       value={form.password} onChange={handleChange}
-                      placeholder="Min. 8 characters" className={`${inputCls} pr-12`} />
-                    <button type="button" onClick={() => setShowPass(!showPass)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
-                      {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
-                    </button>
+                      placeholder="Min. 8 characters" className={inputCls} />
                   </div>
                 </div>
 
@@ -427,13 +410,9 @@ const LoginPage: React.FC = () => {
                   </label>
                   <div className="relative">
                     <Lock size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input name="newPassword" type={showPass ? "text" : "password"}
+                    <input name="newPassword" type="password"
                       value={form.newPassword} onChange={handleChange}
-                      placeholder="Min. 8 characters" className={`${inputCls} pr-12`} />
-                    <button type="button" onClick={() => setShowPass(!showPass)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
-                      {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
-                    </button>
+                      placeholder="Min. 8 characters" className={inputCls} />
                   </div>
                 </div>
                 <button type="submit" disabled={loading}

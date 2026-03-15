@@ -28,7 +28,7 @@ import LoginPage from "./pages/LoginPage";
 import MyOrdersPage from "./pages/MyOrdersPage";
 
 // Admin Pages
-import AdminLoginPage from "./pages/admin/AdminLoginPage";
+
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminProducts from "./pages/admin/AdminProducts";
 import AdminOrders from "./pages/admin/AdminOrders";
@@ -151,7 +151,7 @@ const App: React.FC = () => {
               />
 
               {/* ── Admin Routes ── */}
-              <Route path="/admin/login" element={<AdminLoginPage />} />
+
               <Route
                 path="/admin"
                 element={

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useAuth } from "../../context/AuthContext";
 import { Link, useNavigate } from "react-router-dom";
 import {
   ShoppingBag,
@@ -26,6 +27,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
+  const { logout: authLogout } = useAuth();
   const user = authService.getStoredUser();
 
   const [stats, setStats] = useState<OrderStats | null>(null);
@@ -51,8 +53,8 @@ const AdminDashboard: React.FC = () => {
   }, []);
 
   const handleLogout = () => {
-    authService.logout();
-    navigate("/admin/login");
+    authLogout();
+    navigate("/login");
   };
 
   if (loading) return <LoadingSpinner size="lg" fullScreen text="Loading Dashboard" />;
