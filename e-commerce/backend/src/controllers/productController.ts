@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import asyncHandler from "express-async-handler";
 import Product from "../models/Product";
-import path from "path";
+
 
 // @desc    Upload product image
 // @route   POST /api/products/upload
@@ -12,14 +12,15 @@ export const uploadProductImage = asyncHandler(async (req: Request, res: Respons
     return;
   }
 
-  // Return the file path that can be used as image URL
-  const imageUrl = `/uploads/${req.file.filename}`;
+  // Return Cloudinary CDN URL
+  const imageUrl = req.file.path;
   
   res.status(200).json({
     success: true,
     imageUrl,
-    message: "Image uploaded successfully",
+    message: "Image uploaded to Cloudinary successfully",
   });
+
 });
 
 // @desc    Get all products with search & filter
