@@ -50,23 +50,58 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
 // ── Not Found Page ──
 const NotFoundPage: React.FC = () => (
-  <div className="min-h-screen bg-dark-400 flex items-center justify-center px-4">
-    <div className="text-center animate-fade-in">
-      <p className="text-primary-500 text-8xl md:text-9xl font-bold mb-4 leading-none">
+  <div className="min-h-screen bg-gradient-to-b from-dark-400 via-dark-400 to-dark-500 flex items-center justify-center px-4 py-12 relative overflow-hidden">
+    {/* Floating particles */}
+    <div className="absolute inset-0 pointer-events-none">
+      <div className="absolute top-20 right-20 w-20 h-20 md:w-32 md:h-32 bg-primary-300/10 rounded-full blur-xl animate-pulse" />
+      <div className="absolute bottom-32 left-16 w-16 h-16 md:w-24 md:h-24 bg-sand-200/10 rounded-full blur-xl animate-pulse" style={{animationDelay: '1s'}} />
+      <div className="absolute top-1/2 left-8 w-12 h-12 md:w-20 md:h-20 bg-primary-400/5 rounded-full blur-lg animate-bounce" />
+    </div>
+    
+    <div className="relative z-10 text-center max-w-lg mx-auto animate-slide-up">
+      {/* Lost Shopping Bag */}
+      <div className="mx-auto mb-12 relative group">
+        <div className="w-28 h-28 md:w-36 md:h-36 mx-auto bg-gradient-to-br from-sand-100 to-sand-200 rounded-3xl shadow-2xl relative transform group-hover:-rotate-3 transition-transform duration-500">
+          <div className="absolute -bottom-2 -right-2 w-full h-full bg-black/10 rounded-3xl blur-sm -z-10" />
+          <div className="absolute inset-0 bg-gradient-to-t from-sand-300/80 via-sand-200/90 to-white rounded-3xl shadow-xl" />
+          <div className="absolute top-0 left-3 right-3 h-10 bg-gradient-to-b from-white/90 to-sand-100 rounded-t-2xl border-b border-sand-400 shadow-sm">
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 to-transparent rounded-full blur-sm animate-pulse" />
+          </div>
+          <div className="absolute top-1 left-3 w-10 h-3 bg-sand-400 rounded-full shadow-sm" />
+          <div className="absolute top-1 right-3 w-10 h-3 bg-sand-400 rounded-full shadow-sm" />
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-10 h-10 bg-gradient-to-r from-primary-400 to-primary-500 rounded-2xl flex items-center justify-center shadow-lg ring-2 ring-white/30">
+            <span className="text-sm md:text-base font-black text-dark-400 drop-shadow-sm animate-pulse">?</span>
+          </div>
+          <div className="absolute top-2 right-2 w-6 h-6 bg-primary-400 rounded-full opacity-75 animate-ping" />
+        </div>
+        <p className="absolute -top-3 -right-4 md:-right-6 text-xs md:text-sm text-primary-500 font-bold tracking-wider uppercase bg-dark-400 px-2 py-1 rounded-full shadow-md animate-bounce">
+          Lost!
+        </p>
+      </div>
+      
+      <h1 className="text-8xl md:text-[10rem] font-black tracking-tight bg-gradient-to-r from-primary-400 via-primary-500 to-primary-600 bg-clip-text text-transparent leading-none drop-shadow-2xl animate-shake">
         404
-      </p>
-      <h1 className="text-white text-3xl font-bold tracking-wider mb-3">
-        PAGE NOT FOUND
       </h1>
-      <p className="text-gray-500 text-sm mb-10 max-w-xs mx-auto leading-relaxed">
-        The page you're looking for doesn't exist or has been moved.
+      
+      <h2 className="text-3xl md:text-4xl font-display font-bold tracking-tight mb-6 text-white/95 drop-shadow-lg">
+        Page Not Found
+      </h2>
+      
+      <p className="text-gray-300/90 text-lg md:text-xl mb-12 leading-relaxed max-w-sm mx-auto font-medium">
+        Oops! The page you're looking for doesn't exist. <span className="text-primary-400 animate-pulse">Maybe it's on vacation? 🌴</span>
       </p>
+      
       <a
         href="/"
-        className="inline-flex items-center gap-3 bg-primary-500 text-dark-400 px-10 py-4 text-sm font-bold tracking-widest uppercase hover:bg-white transition-colors duration-300"
+        className="inline-flex items-center gap-3 bg-gradient-to-r from-primary-500 to-primary-600 text-dark-400 px-12 py-5 text-sm font-bold tracking-widest uppercase hover:from-primary-400 hover:to-primary-500 hover:shadow-xl hover:scale-105 transition-all duration-300 shadow-lg rounded-full group btn-primary"
       >
-        Back to Home
+        <span>← Back to Home</span>
+        <span className="transform transition-transform duration-300 group-hover:translate-x-2">🏠</span>
       </a>
+      
+      <p className="mt-12 text-xs text-gray-500/80 tracking-widest uppercase font-bold animate-fade-in">
+        Try <a href="/products" className="text-primary-400 hover:text-primary-300 underline">shopping</a> or contact support
+      </p>
     </div>
   </div>
 );
