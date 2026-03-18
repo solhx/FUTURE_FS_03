@@ -15,8 +15,31 @@ interface GetProductsParams {
 
 export const productService = {
   getProducts: async (params?: GetProductsParams): Promise<ProductsResponse> => {
-    const response = await api.get("/products", { params });
-    return response.data;
+    const maxRetries = 3;
+    let lastError: any;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const response = await api.get("/products", { params });
+        return response.data;
+      } catch (error: any) {
+        lastError = error;
+        const isTimeoutOrNetworkError = 
+          error.code === 'ECONNABORTED' || // timeout
+          error.code === 'ENOTFOUND' ||
+          error.code === 'ECONNRESET' ||
+          !error.response; // network error
+
+        if (!isTimeoutOrNetworkError || attempt === maxRetries) {
+          throw error;
+        }
+
+        // Exponential backoff: 100ms, 300ms, 900ms
+        const delay = Math.min(100 * Math.pow(3, attempt - 1), 2000);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+    throw lastError;
   },
 
   getProduct: async (id: string): Promise<{ success: boolean; product: Product }> => {

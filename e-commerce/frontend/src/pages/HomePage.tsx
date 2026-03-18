@@ -71,6 +71,7 @@ const instagramPosts = [
 const HomePage: React.FC = () => {
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [currentReview, setCurrentReview] = useState(0);
 
   useEffect(() => {
@@ -78,8 +79,8 @@ const HomePage: React.FC = () => {
       try {
         const data = await productService.getProducts({ featured: true, limit: 4 });
         setFeaturedProducts(data.products);
-      } catch (err) {
-        console.error("Failed to fetch featured products:", err);
+      } catch (err: any) {
+        setError("Failed to load featured products. Please check your connection and try refreshing.");
       } finally {
         setLoading(false);
       }
@@ -186,6 +187,20 @@ const HomePage: React.FC = () => {
           {loading ? (
             <div className="flex justify-center py-20">
               <LoadingSpinner size="md" />
+            </div>
+          ) : error ? (
+            <div className="text-center py-20">
+              <div className="text-red-500 text-xl mb-4">{error}</div>
+              <button 
+                onClick={() => window.location.reload()} 
+                className="bg-primary-500 text-white px-6 py-2 rounded hover:bg-primary-600"
+              >
+                Try Again
+              </button>
+            </div>
+          ) : featuredProducts.length === 0 ? (
+            <div className="text-center py-20 text-gray-500">
+              No featured products available at the moment.
             </div>
           ) : (
             <>
