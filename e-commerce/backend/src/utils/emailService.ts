@@ -1,4 +1,3 @@
-import { Resend } from "resend";
 import nodemailer from "nodemailer";
 
 interface EmailOptions {
@@ -13,7 +12,7 @@ const createTransporter = () => {
 
   if (!EMAIL_USER || !EMAIL_PASS) {
     console.warn(
-      "⚠️  Email not configured. Set EMAIL_USER and EMAIL_PASS in .env"
+      "⚠️  Gmail SMTP not configured. Set EMAIL_USER and EMAIL_PASS in .env"
     );
     return null;
   }
@@ -28,38 +27,24 @@ const createTransporter = () => {
 };
 
 export const sendEmail = async (options: EmailOptions): Promise<void> => {
-// Resend API (HTTP - works on Render!)
-  const resend = new Resend(process.env.RESEND_API_KEY);
-  if (process.env.RESEND_API_KEY) {
-    try {
-      const { data } = await resend.emails.send({
-        from: process.env.RESEND_FROM ||'onboarding@resend.dev',
-        to: options.to,
-        subject: options.subject,
-        html: options.html,
-      });
-      console.log(`✅ Resend email delivered to ${options.to}`);
-      return;
-    } catch (resendErr) {
-      console.error("Resend failed:", resendErr);
-    }
-  }
-
-  // Original SMTP fallback
   const transporter = createTransporter();
   if (!transporter) {
-    console.log("📧  EMAIL SKIPPED - No SMTP config (use RESEND_API_KEY)");
-    return;
+    throw new Error("❌ Gmail SMTP not configured. Set EMAIL_USER and EMAIL_PASS in .env");
   }
 
-  await transporter.sendMail({
-    from: process.env.EMAIL_FROM || `"Urban Nile" <noreply@urbannile.com>`,
-    to: options.to,
-    subject: options.subject,
-    html: options.html,
-  });
+  try {
+    await transporter.sendMail({
+      from: process.env.EMAIL_FROM || `"Urban Nile" <noreply@urbannile.com>`,
+      to: options.to,
+      subject: options.subject,
+      html: options.html,
+    });
 
-  console.log(`✅ SMTP fallback sent to ${options.to}`);
+    console.log(`✅ Gmail SMTP email sent to ${options.to}`);
+  } catch (smtpError: any) {
+    console.error("❌ Gmail SMTP failed:", smtpError);
+    throw new Error(`Failed to send email: ${smtpError.message}`);
+  }
 };
 
 // ── OTP Email ──
