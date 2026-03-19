@@ -6,14 +6,12 @@ interface EmailOptions {
   html: string;
 }
 
-// ── Create transporter (returns null if not configured) ──
+// ── Create Gmail SMTP Transporter ──
 const createTransporter = () => {
   const { EMAIL_HOST, EMAIL_PORT, EMAIL_USER, EMAIL_PASS } = process.env;
 
   if (!EMAIL_USER || !EMAIL_PASS) {
-    console.warn(
-      "⚠️  Gmail SMTP not configured. Set EMAIL_USER and EMAIL_PASS in .env"
-    );
+    console.warn("⚠️  Gmail SMTP not configured. Set EMAIL_USER and EMAIL_PASS in .env");
     return null;
   }
 
@@ -21,29 +19,34 @@ const createTransporter = () => {
     host: EMAIL_HOST || "smtp.gmail.com",
     port: Number(EMAIL_PORT) || 587,
     secure: false,
-    auth: { user: EMAIL_USER, pass: EMAIL_PASS },
+    auth: {
+      user: EMAIL_USER,
+      pass: EMAIL_PASS,
+    },
     tls: { rejectUnauthorized: false },
   });
 };
 
+// ── Send Email ──
 export const sendEmail = async (options: EmailOptions): Promise<void> => {
   const transporter = createTransporter();
+
   if (!transporter) {
-    throw new Error("❌ Gmail SMTP not configured. Set EMAIL_USER and EMAIL_PASS in .env");
+    throw new Error("❌ Gmail SMTP not configured.");
   }
 
   try {
     await transporter.sendMail({
-      from: process.env.EMAIL_FROM || `"Urban Nile" <noreply@urbannile.com>`,
+      from: process.env.EMAIL_FROM || `"Urban Nile" <${process.env.EMAIL_USER}>`,
       to: options.to,
       subject: options.subject,
       html: options.html,
     });
 
-    console.log(`✅ Gmail SMTP email sent to ${options.to}`);
-  } catch (smtpError: any) {
-    console.error("❌ Gmail SMTP failed:", smtpError);
-    throw new Error(`Failed to send email: ${smtpError.message}`);
+    console.log(`✅ Email sent to ${options.to}`);
+  } catch (error: any) {
+    console.error("❌ Gmail SMTP failed:", error);
+    throw new Error(`Failed to send email: ${error.message}`);
   }
 };
 
@@ -68,22 +71,22 @@ export const sendOTPEmail = async (
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <title>${subject}</title>
       <style>
-        *  { margin:0; padding:0; box-sizing:border-box; }
+        * { margin:0; padding:0; box-sizing:border-box; }
         body { font-family: 'Helvetica Neue', Arial, sans-serif; background:#f5f0eb; }
-        .wrap  { max-width:580px; margin:40px auto; background:#fff; border-radius:8px; overflow:hidden; box-shadow:0 4px 24px rgba(0,0,0,.10); }
-        .head  { background:#1a1a1a; padding:36px; text-align:center; }
+        .wrap { max-width:580px; margin:40px auto; background:#fff; border-radius:8px; overflow:hidden; box-shadow:0 4px 24px rgba(0,0,0,.10); }
+        .head { background:#1a1a1a; padding:36px; text-align:center; }
         .head h1 { color:#c9a96e; font-size:28px; letter-spacing:6px; font-weight:700; }
-        .head p  { color:#888; font-size:11px; letter-spacing:3px; margin-top:6px; }
-        .body  { padding:44px 40px; }
-        .hi    { font-size:20px; color:#1a1a1a; font-weight:700; margin-bottom:16px; }
-        .msg   { font-size:14px; color:#555; line-height:1.8; margin-bottom:32px; }
+        .head p { color:#888; font-size:11px; letter-spacing:3px; margin-top:6px; }
+        .body { padding:44px 40px; }
+        .hi { font-size:20px; color:#1a1a1a; font-weight:700; margin-bottom:16px; }
+        .msg { font-size:14px; color:#555; line-height:1.8; margin-bottom:32px; }
         .otp-box { background:linear-gradient(135deg,#1a1a1a,#333); border-radius:10px; padding:28px; text-align:center; margin:0 0 28px; }
         .otp-label { color:#c9a96e; font-size:11px; letter-spacing:4px; text-transform:uppercase; margin-bottom:12px; }
-        .otp-code  { font-size:46px; font-weight:800; color:#FFFFFF; letter-spacing:14px; font-family:'Courier New',monospace; }
-        .otp-exp   { color:#888; font-size:12px; margin-top:12px; }
-        .warn  { background:#fff8f0; border-left:4px solid #c9a96e; padding:14px 18px; border-radius:0 6px 6px 0; margin-bottom:24px; }
+        .otp-code { font-size:46px; font-weight:800; color:#FFFFFF; letter-spacing:14px; font-family:'Courier New',monospace; }
+        .otp-exp { color:#888; font-size:12px; margin-top:12px; }
+        .warn { background:#fff8f0; border-left:4px solid #c9a96e; padding:14px 18px; border-radius:0 6px 6px 0; margin-bottom:24px; }
         .warn p { color:#8a6a3a; font-size:13px; line-height:1.6; }
-        .foot  { background:#f9f5f0; padding:24px; text-align:center; }
+        .foot { background:#f9f5f0; padding:24px; text-align:center; }
         .foot p { color:#aaa; font-size:12px; line-height:1.8; }
         .foot a { color:#c9a96e; text-decoration:none; }
       </style>
@@ -109,7 +112,7 @@ export const sendOTPEmail = async (
             <p class="otp-exp">⏱ Expires in 10 minutes</p>
           </div>
           <div class="warn">
-            <p>⚠️ <strong>Never share this code.</strong> Urban Nile will never ask for it by phone or chat. One-time use only.</p>
+            <p>⚠️ <strong>Never share this code.</strong> Urban Nile will never ask for it by phone or chat.</p>
           </div>
         </div>
         <div class="foot">
@@ -121,7 +124,6 @@ export const sendOTPEmail = async (
     </html>
   `;
 
-  // Log OTP to console always in dev
   if (process.env.NODE_ENV === "development") {
     console.log("─────────────────────────────────────");
     console.log(`🔑  OTP for ${email}: ${otp}`);
@@ -164,28 +166,32 @@ export const sendOrderConfirmationEmail = async (
     .join("");
 
   const html = `
-    <!DOCTYPE html><html lang="en">
-    <head><meta charset="UTF-8"/><style>
-      *{margin:0;padding:0;box-sizing:border-box;}
-      body{font-family:'Helvetica Neue',Arial,sans-serif;background:#f5f0eb;}
-      .wrap{max-width:580px;margin:40px auto;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.10);}
-      .head{background:#1a1a1a;padding:30px;text-align:center;}
-      .head h1{color:#c9a96e;font-size:26px;letter-spacing:6px;}
-      .banner{background:linear-gradient(135deg,#c9a96e,#e8c99e);padding:22px;text-align:center;}
-      .banner h2{color:#1a1a1a;font-size:18px;font-weight:700;}
-      .body{padding:36px;}
-      .on{background:#f9f5f0;border-radius:8px;padding:14px;text-align:center;margin-bottom:24px;}
-      .on span{font-size:11px;color:#888;letter-spacing:3px;display:block;}
-      .on strong{font-size:22px;color:#1a1a1a;letter-spacing:4px;}
-      table{width:100%;border-collapse:collapse;margin-bottom:24px;}
-      th{background:#f9f5f0;padding:10px;text-align:left;font-size:11px;color:#888;letter-spacing:2px;text-transform:uppercase;}
-      .total td{padding:14px 10px;font-weight:700;font-size:16px;}
-      .addr{background:#f9f5f0;border-radius:8px;padding:18px;margin-bottom:16px;}
-      .addr p{font-size:13px;color:#555;line-height:1.8;}
-      .foot{background:#1a1a1a;padding:24px;text-align:center;}
-      .foot p{color:#666;font-size:12px;line-height:1.8;}
-      .foot a{color:#c9a96e;text-decoration:none;}
-    </style></head>
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8"/>
+      <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family:'Helvetica Neue',Arial,sans-serif; background:#f5f0eb; }
+        .wrap { max-width:580px; margin:40px auto; background:#fff; border-radius:8px; overflow:hidden; box-shadow:0 4px 24px rgba(0,0,0,.10); }
+        .head { background:#1a1a1a; padding:30px; text-align:center; }
+        .head h1 { color:#c9a96e; font-size:26px; letter-spacing:6px; }
+        .banner { background:linear-gradient(135deg,#c9a96e,#e8c99e); padding:22px; text-align:center; }
+        .banner h2 { color:#1a1a1a; font-size:18px; font-weight:700; }
+        .body { padding:36px; }
+        .on { background:#f9f5f0; border-radius:8px; padding:14px; text-align:center; margin-bottom:24px; }
+        .on span { font-size:11px; color:#888; letter-spacing:3px; display:block; }
+        .on strong { font-size:22px; color:#1a1a1a; letter-spacing:4px; }
+        table { width:100%; border-collapse:collapse; margin-bottom:24px; }
+        th { background:#f9f5f0; padding:10px; text-align:left; font-size:11px; color:#888; letter-spacing:2px; text-transform:uppercase; }
+        .total td { padding:14px 10px; font-weight:700; font-size:16px; }
+        .addr { background:#f9f5f0; border-radius:8px; padding:18px; margin-bottom:16px; }
+        .addr p { font-size:13px; color:#555; line-height:1.8; }
+        .foot { background:#1a1a1a; padding:24px; text-align:center; }
+        .foot p { color:#666; font-size:12px; line-height:1.8; }
+        .foot a { color:#c9a96e; text-decoration:none; }
+      </style>
+    </head>
     <body>
       <div class="wrap">
         <div class="head"><h1>URBAN NILE</h1></div>
@@ -203,8 +209,10 @@ export const sendOrderConfirmationEmail = async (
           <table>
             <thead>
               <tr>
-                <th>Product</th><th style="text-align:center">Size</th>
-                <th style="text-align:center">Qty</th><th style="text-align:right">Total</th>
+                <th>Product</th>
+                <th style="text-align:center">Size</th>
+                <th style="text-align:center">Qty</th>
+                <th style="text-align:right">Total</th>
               </tr>
             </thead>
             <tbody>${rows}</tbody>
@@ -234,7 +242,8 @@ export const sendOrderConfirmationEmail = async (
           <p><a href="mailto:support@urbannile.com">support@urbannile.com</a></p>
         </div>
       </div>
-    </body></html>
+    </body>
+    </html>
   `;
 
   await sendEmail({
