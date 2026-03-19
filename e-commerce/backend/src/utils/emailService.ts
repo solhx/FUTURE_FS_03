@@ -1,4 +1,4 @@
-import nodemailer from "nodemailer";
+import axios from "axios";
 
 interface EmailOptions {
   to: string;
@@ -6,44 +6,37 @@ interface EmailOptions {
   html: string;
 }
 
-// ── Create Gmail SMTP Transporter ──
-const createTransporter = () => {
-  const { EMAIL_HOST, EMAIL_PORT, EMAIL_USER, EMAIL_PASS } = process.env;
-
-  if (!EMAIL_USER || !EMAIL_PASS) {
-    console.warn("⚠️  Email SMTP not configured.");
-    return null;
-  }
-
-  return nodemailer.createTransport({
-    host: EMAIL_HOST || "smtp-relay.brevo.com",
-    port: Number(EMAIL_PORT) || 587,
-    secure: false,                        // ← false for port 587
-    auth: {
-      user: EMAIL_USER,
-      pass: EMAIL_PASS,
-    },
-  });
-};
-// ── Send Email ──
+// ── Send Email via Brevo REST API ──
 export const sendEmail = async (options: EmailOptions): Promise<void> => {
-  const transporter = createTransporter();
+  const apiKey = process.env.BREVO_API_KEY;
 
-  if (!transporter) {
-    throw new Error("❌ Gmail SMTP not configured.");
+  if (!apiKey) {
+    throw new Error("❌ BREVO_API_KEY not configured.");
   }
 
   try {
-    await transporter.sendMail({
-      from: process.env.EMAIL_FROM || `"Urban Nile" <${process.env.EMAIL_USER}>`,
-      to: options.to,
-      subject: options.subject,
-      html: options.html,
-    });
+    await axios.post(
+      "https://api.brevo.com/v3/smtp/email",
+      {
+        sender: {
+          name: process.env.EMAIL_FROM_NAME || "Urban Nile",
+          email: process.env.EMAIL_FROM || "hosscollage@gmail.com",
+        },
+        to: [{ email: options.to }],
+        subject: options.subject,
+        htmlContent: options.html,
+      },
+      {
+        headers: {
+          "api-key": apiKey,
+          "Content-Type": "application/json",
+        },
+      }
+    );
 
     console.log(`✅ Email sent to ${options.to}`);
   } catch (error: any) {
-    console.error("❌ Gmail SMTP failed:", error);
+    console.error("❌ Brevo API failed:", error?.response?.data || error.message);
     throw new Error(`Failed to send email: ${error.message}`);
   }
 };
