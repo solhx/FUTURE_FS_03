@@ -4,7 +4,6 @@ import helmet from "helmet";
 import morgan from "morgan";
 import rateLimit from "express-rate-limit";
 import dotenv from "dotenv";
-import path from "path";
 import connectDB from "./config/db";
 import authRoutes from "./routes/authRoutes";
 import productRoutes from "./routes/productRoutes";
@@ -21,31 +20,49 @@ connectDB();
 // Security middleware
 app.use(helmet());
 
+// ── CORS ──
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "http://localhost:5175",
+  "https://urban-nile.netlify.app",
+];
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        console.error(`❌ CORS blocked: ${origin}`);
+        callback(new Error(`CORS policy blocked: ${origin}`));
+      }
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
+
+// ✅ Handle preflight
+app.options("*", cors());
+
 // Rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
+  windowMs: 15 * 60 * 1000,
   max: 100,
   message: { success: false, message: "Too many requests, please try again later." },
 });
 app.use("/api", limiter);
 
-// Auth rate limiter (stricter)
+// Auth rate limiter
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
   message: { success: false, message: "Too many auth attempts, please try again later." },
 });
 app.use("/api/auth", authLimiter);
-
-// CORS
-app.use(
-  cors({
-origin: process.env.CLIENT_URL || ["http://localhost:5173", "http://localhost:5174", "http://localhost:5175", "https://urban-nile.netlify.app"],
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
-);
 
 // Body parsing
 app.use(express.json({ limit: "10mb" }));
@@ -55,7 +72,6 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 if (process.env.NODE_ENV === "development") {
   app.use(morgan("dev"));
 }
-
 
 // Health check
 app.get("/api/health", (req, res) => {
