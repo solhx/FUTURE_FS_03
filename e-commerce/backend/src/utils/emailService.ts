@@ -1,3 +1,4 @@
+import { Resend } from "resend";
 import nodemailer from "nodemailer";
 
 interface EmailOptions {
@@ -27,16 +28,28 @@ const createTransporter = () => {
 };
 
 export const sendEmail = async (options: EmailOptions): Promise<void> => {
-  const transporter = createTransporter();
+// Resend API (HTTP - works on Render!)
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  if (process.env.RESEND_API_KEY) {
+    try {
+      const { data } = await resend.emails.send({
+        from: process.env.RESEND_FROM || process.env.EMAIL_FROM || 'Urban Nile <noreply@urbannile.com>',
+        to: options.to,
+        subject: options.subject,
+        html: options.html,
+      });
+      console.log(`✅ Resend email delivered to ${options.to}`);
+      return;
+    } catch (resendErr) {
+      console.error("Resend failed:", resendErr);
+    }
+  }
 
+  // Original SMTP fallback
+  const transporter = createTransporter();
   if (!transporter) {
-    // Log OTP to console in dev so you can still test
-    console.log("─────────────────────────────────");
-    console.log(`📧  EMAIL NOT SENT (no config)`);
-    console.log(`To:      ${options.to}`);
-    console.log(`Subject: ${options.subject}`);
-    console.log("─────────────────────────────────");
-    return; // Don't throw — just skip
+    console.log("📧  EMAIL SKIPPED - No SMTP config (use RESEND_API_KEY)");
+    return;
   }
 
   await transporter.sendMail({
@@ -46,7 +59,7 @@ export const sendEmail = async (options: EmailOptions): Promise<void> => {
     html: options.html,
   });
 
-  console.log(`✅ Email sent to ${options.to}`);
+  console.log(`✅ SMTP fallback sent to ${options.to}`);
 };
 
 // ── OTP Email ──
