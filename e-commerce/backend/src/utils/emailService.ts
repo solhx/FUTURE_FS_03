@@ -33,7 +33,7 @@ export const sendEmail = async (options: EmailOptions): Promise<void> => {
   if (process.env.RESEND_API_KEY) {
     try {
       const { data } = await resend.emails.send({
-        from: process.env.EMAIL_USER || process.env.EMAIL_FROM || 'Urban Nile <noreply@urbannile.com>',
+        from: process.env.RESEND_FROM ||'onboarding@resend.dev',
         to: options.to,
         subject: options.subject,
         html: options.html,
