@@ -19,4 +19,5 @@ const connectDB = async (): Promise<void> => {
   }
 };
 
+// Export now returns promise for await usage
 export default connectDB;
