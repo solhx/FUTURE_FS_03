@@ -11,22 +11,20 @@ const createTransporter = () => {
   const { EMAIL_HOST, EMAIL_PORT, EMAIL_USER, EMAIL_PASS } = process.env;
 
   if (!EMAIL_USER || !EMAIL_PASS) {
-    console.warn("⚠️  Gmail SMTP not configured. Set EMAIL_USER and EMAIL_PASS in .env");
+    console.warn("⚠️  Email SMTP not configured.");
     return null;
   }
 
   return nodemailer.createTransport({
-    host: EMAIL_HOST || "smtp.gmail.com",
-    port: Number(EMAIL_PORT) || 465,
-    secure: false,
+    host: EMAIL_HOST || "smtp-relay.brevo.com",
+    port: Number(EMAIL_PORT) || 587,
+    secure: false,                        // ← false for port 587
     auth: {
       user: EMAIL_USER,
       pass: EMAIL_PASS,
     },
-    tls: { rejectUnauthorized: false },
   });
 };
-
 // ── Send Email ──
 export const sendEmail = async (options: EmailOptions): Promise<void> => {
   const transporter = createTransporter();
