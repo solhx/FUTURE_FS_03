@@ -1,0 +1,15 @@
+## API Proxy - Forward API calls to backend
+/api/*  https://urban-nile.onrender.com/api/:splat 200!
+
+## SPA Routing - Serve React app for all other paths
+/*      /index.html                   200
+
+# Explanation in comments:
+# - /api/* preserves your backend proxy from netlify.toml
+# - /* catch-all serves index.html for ALL frontend routes
+# - React Router then handles routing client-side:
+#   - Matches defined routes (/products, /login, /admin/*, etc.)
+#   - Shows your NotFoundPage for invalid paths
+# - Deploy: netlify.toml already builds to frontend/dist
+# - _redirects will be copied to dist/_redirects automatically
+# - Test: npm run build & check dist/_redirects exists
