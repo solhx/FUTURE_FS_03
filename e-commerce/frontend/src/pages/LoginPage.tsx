@@ -51,17 +51,26 @@ const LoginPage: React.FC = () => {
         navigate(res.user.role === "admin" ? "/admin" : from, { replace: true });
       }
     } catch (err: unknown) {
-      // Extract error message from response
-      const axiosError = err as { response?: { data?: { message?: string; requiresVerification?: boolean } } };
-      if (axiosError.response?.data?.requiresVerification) {
-        // User exists but not verified - redirect to verify page
-        setPendingEmail(form.email);
-        setMode("verify");
-        toast.error("Please verify your email first.");
-      } else {
-        const message = axiosError.response?.data?.message || "Invalid email or password";
-        setError(message);
+      const axiosError = err as any;
+      let message = "Invalid email or password";
+      
+      if (axiosError.response) {
+        const status = axiosError.response.status;
+        const data = axiosError.response.data;
+        message = data.message || message;
+        
+        // requiresVerification OR OTP pending → verify mode
+        if ((data.requiresVerification || status === 400) && 
+            (data.requiresVerification || message.includes("verify") || message.includes("OTP"))) {
+          setPendingEmail(form.email);
+          setMode("verify");
+          toast.error("Please verify your email first.");
+          setLoading(false);
+          return;
+        }
       }
+      
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -99,10 +108,27 @@ const LoginPage: React.FC = () => {
 
       toast.success("Account created! Check your email for the OTP 📧");
     } catch (err: unknown) {
-      // Extract error message from response
-      const axiosError = err as { response?: { data?: { message?: string } } };
-      const msg =
-        axiosError.response?.data?.message || "Registration failed";
+      const axiosError = err as any;
+      let msg = "Registration failed";
+      
+      if (axiosError.response) {
+        const status = axiosError.response.status;
+        const data = axiosError.response.data;
+        msg = data.message || msg;
+        
+        // Handle business logic 400s → treat as pending verification
+        if (status === 400 && 
+            (msg.includes("OTP") || 
+             msg.includes("verification") || 
+             msg.includes("pending"))) {
+          setPendingEmail(form.email);
+          setMode("verify");
+          toast.error("Verification needed. Enter your OTP below.");
+          setLoading(false);
+          return;
+        }
+      }
+      
       setError(msg);
     } finally {
       setLoading(false);
